@@ -41,6 +41,10 @@ def random_choice(dictionary):
         cur += dictionary[choices[i]]
     return choices[k]
 
+def max_choice(dictionary):
+    choices = dictionary.items()
+    return max(choices, key = lambda x: x[1])[0]
+
 def update_trail_levels(paths):
     for i in range(n):
         for j in range(n):
@@ -50,14 +54,62 @@ def update_trail_levels(paths):
         for i in range(n-1):
             trail_level[path[0][i]][path[0][i+1]] += (0. + Q) / path[1]
 
-def get_best_path():
+def simulate_ant(choice_fn = random_choice):
+    red = set(list(red_nodes))
+    blue = set(list(blue_nodes))
+    red_left = (n+1)/2 - 1
+    blue_left = (n+1)/2
+    red.remove(0)
+    path = [0]
+    length = 0
+    while red_left + blue_left:
+        cur_node = path[-1]
+        if len(path) >= 3:
+            if color[path[-1]] == color[path[-2]] == color[path[-3]]: # three nodes of same color, must switch
+                if color[path[-1]] == "R":
+                    choices = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
+                else:
+                    choices = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in red}
+            else:
+                r_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in red}
+                b_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
+                r_dict.update(b_dict)
+                choices = r_dict
+        else:
+            r_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in red}
+            b_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
+            r_dict.update(b_dict)
+            choices = r_dict
+        if len(choices) == 0:
+            return "fail"
+        choice = choice_fn(choices)
+        path.append(choice)
+        length += graph[path[-2]][path[-1]]
+        if color[choice] == 'R':
+            red.remove(choice)
+            red_left -= 1
+        else:
+            blue.remove(choice)
+            blue_left -= 1
+    return (path, length)
 
 
 
 # main loop
-for _ in range(iterations):
+for i in range(iterations):
+    print "iteration %i..." %i
     paths = [] 
     for k in range(ants):
+        result = simulate_ant()
+        if result == "fail":
+            continue;
+        paths.append(result)
+    update_trail_levels(paths)
+
+print simulate_ant(choice_fn = max_choice)
+
+
+"""
         red = set(list(red_nodes))
         blue = set(list(blue_nodes))
         red_left = (n+1)/2 - 1
@@ -96,4 +148,4 @@ for _ in range(iterations):
     update_trail_levels(paths)
 
 
-
+"""
