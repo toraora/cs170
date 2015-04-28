@@ -7,7 +7,7 @@ import multiprocessing as mp
 #import sys
 #data = sys.stdin.readlines()
 
-data = open('3.in', 'r').readlines()
+data = open('4.in', 'r').readlines()
 
 # read / parse data
 n = int(data[0])
@@ -15,14 +15,14 @@ graph = [[int(w) for w in data[i+1].strip().split(' ')] for i in range(n)]
 color = data[n+1]
 red_nodes = {k for k in range(n) if color[k] == 'R'}
 blue_nodes = {k for k in range(n) if color[k] == 'B'}
-if color[0] == 'B':
+if color[0] == 'B': # make starting color always red, for simplicity
     color = ['B' if color[i] == 'R' else 'R' for i in range(n)]
 
 # algorithm parameters / variables (attractiveness already have power to alpha applied to it
-iterations = 200
+iterations = 500
 ants = 1000
-alpha = 2
-beta = 3
+alpha = 3
+beta = 2
 evap_const = 0.01
 Q = n
 attractiveness = [[(1./(0.1 + graph[i][j]))**alpha for j in range(n)] for i in range(n)]
@@ -55,6 +55,16 @@ def update_trail_levels(paths):
         for i in range(n-1):
             trail_level[path[0][i]][path[0][i+1]] += (0. + Q) / path[1] * graph[path[0][i]][path[0][i+1]]
 
+def remove_longest_from_path(path):
+    max_len = 0
+    max_idx = 0
+    for i in range(n-1):
+        cur_len = graph[path[i]][path[i+1]]
+        if cur_len > max_len:
+            max_len = cur_len
+            max_idx = i
+    return ([path[(k + max_idx + 1) % n] for k in range(n)], max_len)
+
 def simulate_ant(choice_fn = random_choice):
     red = set(list(red_nodes))
     blue = set(list(blue_nodes))
@@ -72,14 +82,14 @@ def simulate_ant(choice_fn = random_choice):
                     num_red_prefix += 1
                 else:
                     break
-        # make sure we have enough blue nodes left; this also avoid three in a row on the boundary
-        if blue_left == math.ceil((n - len(path) - 4 + num_red_prefix) / 3.):
-            choices = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in red}
-        # make sure we have enough red nodes left
-        elif red_left == math.ceil((n - len(path) - 1) / 3.):
-            choices = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
-        else:
-            if len(path) >= 3:
+        if len(path) >= 3:
+            # make sure we have enough blue nodes left; this also avoid three in a row on the boundary
+            if blue_left == math.ceil((n - len(path) - 4 + num_red_prefix) / 3.):
+                choices = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in red}
+            # make sure we have enough red nodes left
+            elif red_left == math.ceil((n - len(path) - 1) / 3.):
+                choices = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
+            else:
                 if color[path[-1]] == color[path[-2]] == color[path[-3]]: # three nodes of same color, must switch
                     if color[path[-1]] == "R":
                         choices = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
@@ -90,11 +100,11 @@ def simulate_ant(choice_fn = random_choice):
                     b_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
                     r_dict.update(b_dict)
                     choices = r_dict
-            else:
-                r_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in red}
-                b_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
-                r_dict.update(b_dict)
-                choices = r_dict
+        else:
+            r_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in red}
+            b_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
+            r_dict.update(b_dict)
+            choices = r_dict
         assert (len(choices) != 0), "ant failed to make path"
         choice = choice_fn(choices)
         path.append(choice)
@@ -105,8 +115,8 @@ def simulate_ant(choice_fn = random_choice):
         else:
             blue.remove(choice)
             blue_left -= 1
+    length += graph[path[-1]][path[0]]
     return (path, length)
-
 
 
 # make worker threads
@@ -119,5 +129,9 @@ for i in range(iterations):
     update_trail_levels(paths)
 
 # best path as determined by ACO
-print simulate_ant(choice_fn = max_choice)
+best = simulate_ant(choice_fn = max_choice)
+print best
+best_path = remove_longest_from_path(best[0])
+print best_path[0], best[1] - best_path[1]
+
 
