@@ -4,10 +4,12 @@ import math
 import random
 import multiprocessing as mp
 
+num_threads = 4
+
 #import sys
 #data = sys.stdin.readlines()
 
-data = open('4.in', 'r').readlines()
+data = open('6.in', 'r').readlines()
 
 # read / parse data
 n = int(data[0])
@@ -54,6 +56,9 @@ def update_trail_levels(paths):
     for path in paths:
         for i in range(n-1):
             trail_level[path[0][i]][path[0][i+1]] += (0. + Q) / path[1] * graph[path[0][i]][path[0][i+1]]
+            trail_level[path[0][i+1]][path[0][i]] += (0. + Q) / path[1] * graph[path[0][i+1]][path[0][i]]
+        trail_level[path[0][n-1]][path[0][0]] += (0. + Q) / path[1] * graph[path[0][n-1]][path[0][0]]
+        trail_level[path[0][0]][path[0][n-1]] += (0. + Q) / path[1] * graph[path[0][0]][path[0][n-1]]
 
 def remove_longest_from_path(path):
     max_len = 0
@@ -105,7 +110,6 @@ def simulate_ant(choice_fn = random_choice):
             b_dict = {node:attractiveness[cur_node][node]*trail_level[cur_node][node]**beta for node in blue}
             r_dict.update(b_dict)
             choices = r_dict
-        assert (len(choices) != 0), "ant failed to make path"
         choice = choice_fn(choices)
         path.append(choice)
         length += graph[path[-2]][path[-1]]
@@ -120,11 +124,12 @@ def simulate_ant(choice_fn = random_choice):
 
 
 # make worker threads
-threadpool = mp.Pool(4)
+threadpool = mp.Pool(num_threads)
 
 # main loop
 for i in range(iterations):
-    print "iteration %i..." %i
+    if (i % (iterations / 100)) == 0:
+        print "iteration %i..." %i
     paths = threadpool.map(simulate_ant, [random_choice] * ants)
     update_trail_levels(paths)
 
