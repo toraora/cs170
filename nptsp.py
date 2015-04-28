@@ -20,11 +20,11 @@ if color[0] == 'B':
     color = ['B' if color[i] == 'R' else 'R' for i in range(n)]
 
 # algorithm parameters / variables (attractiveness already have power to alpha applied to it
-iterations = 1000
+iterations = 500
 ants = 1000
-alpha = 1
-beta = 1
-evap_const = 0.2
+alpha = 2
+beta = 3
+evap_const = 0.01
 Q = n
 attractiveness = [[(1./(0.1 + graph[i][j]))**alpha for j in range(n)] for i in range(n)]
 trail_level = [[0 if i == j else 1 for j in range(n)] for i in range(n)]
@@ -48,13 +48,15 @@ def max_choice(dictionary):
     return max(choices, key = lambda x: x[1])[0]
 
 def update_trail_levels(paths):
+    scaling_factor = (0. + ants) / len(paths)
+
     for i in range(n):
         for j in range(n):
             trail_level[i][j] *= (1-evap_const)
 
     for path in paths:
         for i in range(n-1):
-            trail_level[path[0][i]][path[0][i+1]] += (0. + Q) / path[1] * graph[path[0][i]][path[0][i+1]]
+            trail_level[path[0][i]][path[0][i+1]] += (0. + Q) / path[1] * graph[path[0][i]][path[0][i+1]] * scaling_factor
 
 def simulate_ant(choice_fn = random_choice):
     red = set(list(red_nodes))
