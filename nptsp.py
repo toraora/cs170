@@ -2,11 +2,13 @@
 
 import math
 import random
+import multiprocessing as mp
+
 
 #import sys
 #data = sys.stdin.readlines()
 
-data = open('2.in', 'r').readlines()
+data = open('4.in', 'r').readlines()
 
 # read / parse data
 n = int(data[0])
@@ -19,12 +21,12 @@ if color[0] == 'B':
 
 # algorithm parameters / variables (attractiveness already have power to alpha applied to it
 iterations = 1000
-ants = 100
+ants = 1000
 alpha = 1
 beta = 1
-evap_const = 0.5
+evap_const = 0.2
 Q = n
-attractiveness = [[(1./(0.5 + graph[i][j]))**alpha for j in range(n)] for i in range(n)]
+attractiveness = [[(1./(0.1 + graph[i][j]))**alpha for j in range(n)] for i in range(n)]
 trail_level = [[0 if i == j else 1 for j in range(n)] for i in range(n)]
 
 # helper functions
@@ -52,7 +54,7 @@ def update_trail_levels(paths):
 
     for path in paths:
         for i in range(n-1):
-            trail_level[path[0][i]][path[0][i+1]] += (0. + Q) / path[1]
+            trail_level[path[0][i]][path[0][i+1]] += (0. + Q) / path[1] * graph[path[0][i]][path[0][i+1]]
 
 def simulate_ant(choice_fn = random_choice):
     red = set(list(red_nodes))
@@ -95,12 +97,15 @@ def simulate_ant(choice_fn = random_choice):
 
 
 
+# make worker threads
+threadpool = mp.Pool(4)
+
 # main loop
 for i in range(iterations):
     print "iteration %i..." %i
     paths = [] 
-    for k in range(ants):
-        result = simulate_ant()
+    results = threadpool.map(simulate_ant, [random_choice] * ants)
+    for result in results:
         if result == "fail":
             continue;
         paths.append(result)
