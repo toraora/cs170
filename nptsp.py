@@ -9,7 +9,7 @@ num_threads = 4
 #import sys
 #data = sys.stdin.readlines()
 
-data = open('10.in', 'r').readlines()
+data = open('3.in', 'r').readlines()
 
 # read / parse data
 n = int(data[0])
@@ -19,14 +19,14 @@ red_nodes = {k for k in range(n) if color[k] == 'R'}
 blue_nodes = {k for k in range(n) if color[k] == 'B'}
 
 # algorithm parameters / variables (attractiveness already have power to alpha applied to it
-iterations = 2000
+iterations = 10000
 ants = 20
 alpha = 2 
 beta = 1
 evap_const = 0.1
-exploit_p = 0.95
+exploit_p = 0.8
 Q = 1
-tau = 1. / (48 * 40000)
+tau = 1. / (n * n * 50)
 attractiveness = [[(1./(1 + graph[i][j]))**alpha for j in range(n)] for i in range(n)]
 trail_level = [[0 if i == j else 1 for j in range(n)] for i in range(n)]
 
@@ -53,10 +53,10 @@ def max_choice(dictionary):
 
 def update_trail_level(path):
     for i in range(n-1):
-        trail_level[path[0][i]][path[0][i+1]] = trail_level[path[0][i]][path[0][i+1]] * (1. - evap_const) + (0. + Q) / path[1]
-        trail_level[path[0][i+1]][path[0][i]] = trail_level[path[0][i+1]][path[0][i]] * (1. - evap_const) + (0. + Q) / path[1]
-    trail_level[path[0][0]][path[0][-1]] = trail_level[path[0][0]][path[0][-1]] * (1. - evap_const) + (0. + Q) / path[1]
-    trail_level[path[0][-1]][path[0][0]] = trail_level[path[0][-1]][path[0][0]] * (1. - evap_const) + (0. + Q) / path[1]
+        trail_level[path[0][i]][path[0][i+1]] = trail_level[path[0][i]][path[0][i+1]] * (1. - evap_const) + evap_const * (0. + Q) / path[1]
+        trail_level[path[0][i+1]][path[0][i]] = trail_level[path[0][i+1]][path[0][i]] * (1. - evap_const) + evap_const * (0. + Q) / path[1]
+    trail_level[path[0][0]][path[0][-1]] = trail_level[path[0][0]][path[0][-1]] * (1. - evap_const) + evap_const * (0. + Q) / path[1]
+    trail_level[path[0][-1]][path[0][0]] = trail_level[path[0][-1]][path[0][0]] * (1. - evap_const) + evap_const * (0. + Q) / path[1]
 
 def update_trail_levels(paths):
     for i in range(n):
@@ -80,7 +80,7 @@ def remove_longest_from_path(path):
             max_idx = i
     return ([path[(k + max_idx + 1) % n] for k in range(n)], max_len)
 
-def simulate_ant(choice_fn = random_choice, exploit = True):
+def simulate_ant(choice_fn = random_choice, exploit = True, pher = True):
     colors = color
     start = random.randint(0,n-1)
     red = set(list(red_nodes)) 
@@ -134,8 +134,9 @@ def simulate_ant(choice_fn = random_choice, exploit = True):
         else:
             choice = choice_fn(choices)
         path.append(choice)
-        trail_level[path[-1]][path[-2]] = trail_level[path[-1]][path[-2]] * (1. - evap_const) + (0. + tau)
-        trail_level[path[-2]][path[-1]] = trail_level[path[-2]][path[-1]] * (1. - evap_const) + (0. + tau)
+        if pher:
+            trail_level[path[-1]][path[-2]] = trail_level[path[-1]][path[-2]] * (1. - evap_const) + evap_const * (0. + tau)
+            trail_level[path[-2]][path[-1]] = trail_level[path[-2]][path[-1]] * (1. - evap_const) + evap_const * (0. + tau)
         nodes.remove(choice)
         length += graph[path[-2]][path[-1]]
         if colors[choice] == 'R':
@@ -144,8 +145,9 @@ def simulate_ant(choice_fn = random_choice, exploit = True):
         else:
             blue.remove(choice)
             blue_left -= 1
-    trail_level[path[-1]][path[0]] = trail_level[path[-1]][path[0]] * (1. - evap_const) + (0. + tau)
-    trail_level[path[0]][path[-1]] = trail_level[path[0]][path[-1]] * (1. - evap_const) + (0. + tau)
+    if pher:
+        trail_level[path[-1]][path[0]] = trail_level[path[-1]][path[0]] * (1. - evap_const) + evap_const * (0. + tau)
+        trail_level[path[0]][path[-1]] = trail_level[path[0]][path[-1]] * (1. - evap_const) + evap_const * (0. + tau)
     length += graph[path[-1]][path[0]]
     return (path, length)
 
@@ -163,14 +165,15 @@ for i in range(iterations):
     #update_trail_levels(paths)
     paths = []
     for _ in range(ants):
-        paths.append(simulate_ant(choice_fn = random_choice, exploit = True))
-    paths.append(simulate_ant(choice_fn = max_choice, exploit = False))
-    update_trail_level(min(paths, key = lambda x: x[1]))
+        paths.append(simulate_ant(choice_fn = random_choice, exploit = True, pher = True))
+    paths.append(simulate_ant(choice_fn = max_choice, exploit = False, pher = False))
+    #update_trail_level(min(paths, key = lambda x: x[1]))
     for path in paths:
         if path[1] < min_cost:
             min_path = path
             min_cost = path[1]
             print min_path
+    update_trail_level(min_path)
 
 # best path as determined by ACO
 best = simulate_ant(choice_fn = max_choice)
